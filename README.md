@@ -48,6 +48,10 @@ kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/master/depl
 
 <img width="1461" alt="Screenshot 2025-02-23 at 13 18 44" src="https://github.com/user-attachments/assets/c9e1d78d-3bad-4167-95d7-051c56111732" />
 
+<img width="1461" alt="Screenshot 2025-02-23 at 14 06 22" src="https://github.com/user-attachments/assets/0a6476bc-3bf5-4e29-b919-0b0694dda936" />
+
+<img width="1461" alt="Screenshot 2025-02-23 at 14 06 35" src="https://github.com/user-attachments/assets/012d7948-4f8e-44e1-ae5f-e0dcbfce7753" />
+
 <img width="1459" alt="Screenshot 2025-02-23 at 13 22 31" src="https://github.com/user-attachments/assets/567b80f9-0877-43c1-8793-da45ea7ba940" />
 
 <img width="1460" alt="Screenshot 2025-02-23 at 13 19 00" src="https://github.com/user-attachments/assets/8fd77e34-9b32-4b0b-8c9a-f1bae0e50c97" />
