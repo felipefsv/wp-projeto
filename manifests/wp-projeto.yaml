@@ -1,0 +1,234 @@
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wp-projeto
+
+---
+# ConfigMap WP
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wp-config
+  namespace: wp-projeto
+data:
+  WORDPRESS_DB_USER: wordpress_user
+  WORDPRESS_DB_NAME: wordpress
+  WORDPRESS_DB_HOST:  mysql
+
+---
+# Secret WP
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wp-secret
+  namespace: wp-projeto
+type: Opaque
+data:
+  WORDPRESS_DB_PASSWORD: MTIzNDU2 #123456
+
+---
+# ConfigMap MYSQL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-config
+  namespace: wp-projeto
+data:
+  MYSQL_USER: wordpress_user
+  MYSQL_DATABASE: wordpress
+
+---
+# Secret MYSQL
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: wp-projeto
+type: Opaque
+data:
+  MYSQL_PASSWORD: MTIzNDU2 #123456
+  MYSQL_ROOT_PASSWORD: MTIzNDU2 #123456
+
+---
+# PersistentVolumeClaim para WordPress
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wp-pvc
+  namespace: wp-projeto
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: longhorn
+
+---
+# StatefulSet do MySQL
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: wp-projeto
+  labels:
+    app: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  serviceName: mysql
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.6
+        ports:
+        - containerPort: 3306
+          name: mysql
+        env:
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-config
+              key: MYSQL_USER
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_PASSWORD
+        volumeMounts:
+          - name: mysql-persistent-storage
+            mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-persistent-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "longhorn"
+      resources:
+        requests:
+          storage: 2Gi
+
+---
+# Deployment do WordPress
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  namespace: wp-projeto
+  labels:
+    app: wordpress
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wordpress
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+      - image: wordpress:5.4-php7.2-apache
+        name: wordpress
+        env:
+        - name: WORDPRESS_DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: wp-config
+              key: WORDPRESS_DB_HOST
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wp-secret
+              key: WORDPRESS_DB_PASSWORD
+        - name: WORDPRESS_DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: wp-config
+              key: WORDPRESS_DB_USER
+        - name: WORDPRESS_DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: wp-config
+              key: WORDPRESS_DB_NAME
+        ports:
+        - containerPort: 80
+          name: wordpress
+        volumeMounts:
+        - name: wordpress-persistent-storage
+          mountPath: /var/www/html
+      volumes:
+      - name: wordpress-persistent-storage
+        persistentVolumeClaim:
+          claimName: wp-pvc
+
+---
+# Serviço Headless para MySQL
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: wp-projeto
+spec:
+  clusterIP: None
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    targetPort: 3306
+
+---
+# Serviço ClusterIP para WordPress
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  namespace: wp-projeto
+spec:
+  type: ClusterIP
+  selector:
+    app: wordpress
+  ports:
+  - port: 80
+    targetPort: 80
+
+---
+# Ingress para WordPress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wp-ingress
+  namespace: wp-projeto
+  labels:
+    app: wordpress
+spec:
+  rules:
+  - host: "wp.18.211.103.145.sslip.io"
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: wordpress
+            port:
+              number: 80
