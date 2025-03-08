@@ -25,7 +25,7 @@ kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/master/depl
     - kubectl patch svc argocd-server -p '{"spec": {"type": "NodePort"}}' -n argocd
 
 - Senha inicial ADMIN
-    - kubectl get secrets argocd-initial-admin-secret -o json  -n argocd
+    - kubectl get secrets argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 --decode -n argocd
 
 
 # Preview
